@@ -412,6 +412,9 @@ IsFunctionEntry(block) :- PublicFunctionFiltered(block, _).
 IsFunctionEntry("0x0").
 IsFunctionEntry(func) :- IsFunctionCallReturn(_, _, func, _, _, _).
 
+DEBUG_OUTPUT(PublicFunctionFiltered)
+DEBUG_OUTPUT(IsFunctionCallReturn)
+
 .decl IsFunctionCall(block:Block, func:Block)
 
 .decl IsPrivateFunctionCall(ctx:global.sens.Context, block:Block, func:Block)
@@ -1225,7 +1228,10 @@ PublicFunction_HighLevel(func, sigHashOut) :-
    IRPublicFunction(func, sigHash),
    SighashIntermediate(sigHash, sigHashOut),
    strlen(sigHashOut) = 10.
-   
+
+DEBUG_OUTPUT(PublicFunction_HighLevel)
+DEBUG_OUTPUT(Function_IRFunction)
+
 HighLevelFunctionName(func, name) :-
    PublicFunction_HighLevel(func, sigHash),
    PublicFunctionSignature(sigHash, name).

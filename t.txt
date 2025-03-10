@@ -1,0 +1,31 @@
+ee75f8c1 finalized_block_hash=0xa8ce39268e4d4691a9eb75d74a8ebbc0abccd8845783caba11f42d005d4f2ce2
+2025-01-04T06:37:38.647643Z  INFO Status connected_peers=7 stage=MerkleExecute checkpoint=21544585 target=21549257
+2025-01-04T06:37:39.238428Z  WARN failed to fetch a block from Etherscan err=error decoding response body
+2025-01-04T06:37:39.243010Z  WARN failed to fetch safe or finalized hash from etherscan safe_block_hash=Err(error decoding response body
+
+Caused by:
+    expected value at line 1 column 1
+
+Location:
+    /root/projects/reth/crates/consensus/debug-client/src/providers/etherscan.rs:35:45) finalized_block_hash=Err(error decoding response body
+
+Caused by:
+    expected value at line 1 column 1
+
+Location:
+    /root/projects/reth/crates/consensus/debug-client/src/providers/etherscan.rs:35:45)
+
+
+root@ser7:~/projects/run_reth# reth --version
+reth Version: 1.0.8
+Commit SHA: 41455dfcdd1310bdaedcbc55054cdb1ef01bf639
+Build Timestamp: 2024-10-06T07:12:32.295587631Z
+Build Features: jemalloc
+Build Profile: release
+
+root@ser7:~/projects/run_reth# reth --version
+reth Version: 1.0.8
+Commit SHA: 41455dfcdd1310bdaedcbc55054cdb1ef01bf639
+Build Timestamp: 2024-10-06T07:12:32.295587631Z
+Build Features: jemalloc
+Build Profile: release

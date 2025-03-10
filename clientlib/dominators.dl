@@ -48,6 +48,10 @@ Dominates(dominator,s) :-
   InFunction(s, f),
   !DoesNotDominate(dominator,s).
 
+DEBUG_OUTPUT(Dominates)
+DEBUG_OUTPUT(PostDominates)
+
+
 /**
   Intra-procedural, block-level.  
   Every path from `block` to the exit goes through `postdominator`.

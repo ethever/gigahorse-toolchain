@@ -329,6 +329,8 @@ GlobalBlockEdge(returnBlock, next) :-
    Statement_Block(s, returnBlock),
    RETURNPRIVATE(s, _).
 
+.output GlobalBlockEdge
+
 .decl Helper_NextStatementInSameBlock(stmt: Statement, stmtNext: Statement)
 
 Helper_NextStatementInSameBlock(stmt1, stmt2) :-

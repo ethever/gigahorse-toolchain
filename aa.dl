@@ -1,0 +1,203 @@
+#include "clientlib/decompiler_imports.dl"
+// #include "clientlib/loops_semantics.dl"
+#include "clientlib/guards.dl"
+#include "clientlib/flows.dl"
+// #include "memory_modeling/memory_modeling.dl"
+// #include "storage_modeling/storage_modeling.dl"
+// #include "clientlib/vulnerability_macros.dl"
+// #include "clientlib/tac_instructions.dl"
+
+
+.decl STATICCALLInternal(stmt:Statement, gas:Variable, target:Variable, data_start:Variable,
+           data_length:Variable, return_start:Variable, return_length:Variable, success: Variable)
+
+
+STATICCALLInternal(stmt, gas, target, data_start, data_length, return_start, return_length, success) :-
+  Statement_Opcode(stmt, "STATICCALL"),
+  Statement_Defines(stmt, success, _),
+  Statement_Uses(stmt, gas, 0),
+  Statement_Uses(stmt, target, 1),
+  Statement_Uses(stmt, data_start, 2),
+  Statement_Uses(stmt, data_length, 3),
+  Statement_Uses(stmt, return_start, 4),
+  Statement_Uses(stmt, return_length, 5).
+
+
+.decl PrecompiledCall2(stmt: Statement, target: Value)
+
+PrecompiledCall2(stmt,  target) :-
+   (STATICCALLInternal(stmt, gas, addr, _, _, _, _, _) ;
+   MY_CALL2(stmt, gas, addr, _, _, _, _, _, _)),
+   (Variable_Value(addr, "0x0") ; Variable_Value(addr, "0x1") ; Variable_Value(addr, "0x2") ;
+    Variable_Value(addr, "0x3") ; Variable_Value(addr, "0x4") ; Variable_Value(addr, "0x5") ;
+    Variable_Value(addr, "0x6") ; Variable_Value(addr, "0x7") ; Variable_Value(addr, "0x8") ;
+    Variable_Value(addr, "0x9") ; Variable_Value(addr, "0xa")),
+    Variable_Value(addr, target).
+
+
+.output PrecompiledCall2
+
+
+.decl IsBlock2(block: Block)
+
+IsBlock2(block) :-
+  LocalBlockEdge(_,  block);
+  LocalBlockEdge( block, _).
+
+
+.output IsBlock2
+
+.output GlobalBlockEdge
+
+.output UnguardedGlobalBlockEdge
+.output SenderGuard
+.output StaticallyGuardedBlock
+.output standardflowanalysis.GlobalFlows
+.output ControlsWith
+.output Controls
+
+.decl MY_CALLER(stmt: Statement, to: Variable)
+MY_CALLER(stmt, to) :- Statement_Opcode(stmt, "CALLER"),
+Statement_Defines(stmt, to, _).
+
+.decl MY_ORIGIN(stmt: Statement, to: Variable)
+MY_ORIGIN(stmt, to) :- Statement_Opcode(stmt, "ORIGIN"),
+Statement_Defines(stmt, to, _).
+
+.output MY_CALLER
+.output MY_ORIGIN
+
+.decl MY_BALANCE(stmt: Statement, a: Variable, to: Variable)
+MY_BALANCE(stmt, a, to) :-
+  Statement_Opcode(stmt, "BALANCE"),
+  Statement_Defines(stmt, to, _),
+  Statement_Uses(stmt, a, 0).
+
+.output MY_BALANCE
+
+.decl MY_SELEBALANCE(stmt: Statement, to: Variable)
+MY_SELEBALANCE(stmt, to) :-
+  Statement_Opcode(stmt, "SELFBALANCE"),
+  Statement_Defines(stmt, to, _).
+
+.output MY_SELEBALANCE
+
+.decl MY_CALL2(stmt:Statement, 
+              gas:Variable, 
+              target:Variable, 
+              value:Variable, 
+              data_start:Variable,
+              data_length:Variable, 
+              return_start:Variable, 
+              return_length:Variable, success: Variable)
+
+MY_CALL2(stmt, gas, target, value, data_start, data_length, return_start, return_length, success) :-
+  Statement_Opcode(stmt, "CALL"),
+  Statement_Defines(stmt, success, _),
+  Statement_Uses(stmt, gas, 0),
+  Statement_Uses(stmt, target, 1),
+  Statement_Uses(stmt, value, 2),
+  Statement_Uses(stmt, data_start, 3),
+  Statement_Uses(stmt, data_length, 4),
+  Statement_Uses(stmt, return_start, 5),
+  Statement_Uses(stmt, return_length, 6).
+
+.output MY_CALL2
+
+.decl WithdrawalToMsgSender(stmt: Statement)
+WithdrawalToMsgSender(stmt) :-
+  MY_CALL2(stmt, _, target, _, _, _, _, _, _),
+  (MY_CALLER(_, target); MY_ORIGIN(_, target)).
+
+.output WithdrawalToMsgSender
+
+.decl FunctionHasGuard(func: Function)
+FunctionHasGuard(func) :-
+  InFunction(block, func),
+  StaticallyGuardedBlock(block, _).
+
+.decl UnguardedPublicFunction(func: Function)
+UnguardedPublicFunction(func) :-
+  IsPublicFunction(func),
+  !FunctionHasGuard(func).
+
+.output UnguardedPublicFunction
+
+.decl VulnerableWithdrawFunction(func: Function)
+VulnerableWithdrawFunction(func) :- 
+  IsPublicFunction(func),
+  Statement_Function(stmt, func),
+  WithdrawalToMsgSender(stmt), 
+  UnguardedPublicFunction(func).
+
+.output VulnerableWithdrawFunction
+
+// .decl PublicFunctionId(fun: Function, sigHashNorm: symbol, sigText: symbol)
+.decl VulnerableWithdrawFunctionWithSelector(func: Function, selector: symbol, text: symbol)
+VulnerableWithdrawFunctionWithSelector(func, selector, text) :-
+  PublicFunctionId(func, selector, text),
+  VulnerableWithdrawFunction(func).
+
+.output VulnerableWithdrawFunctionWithSelector
+
+
+
+
+.decl MY_SELFDESTRUCT(stmt: Statement, address: Variable)
+MY_SELFDESTRUCT(stmt, address) :-
+  Statement_Opcode(stmt, "SELFDESTRUCT"),
+  Statement_Uses(stmt, address, 0).
+
+// .decl SelfdestructToMsgSender(stmt: Statement)
+// SelfdestructToMsgSender(stmt) :-
+//   MY_SELFDESTRUCT(stmt, target),
+//   (MY_CALLER(_, target); MY_ORIGIN(_, target)).
+
+.decl VulnerableSelfdestructFunction(func: Function)
+VulnerableSelfdestructFunction(func) :-
+  IsPublicFunction(func),
+  Statement_Function(stmt, func),
+  MY_SELFDESTRUCT(stmt, target).
+  // (MY_CALLER(_, target); MY_ORIGIN(_, target)).
+  // UnguardedPublicFunction(func).
+
+.decl VulnerableSelfdestructFunctionWithSelector(func: Function, selector: symbol, text: symbol)
+VulnerableSelfdestructFunctionWithSelector(func, selector, text) :-
+  PublicFunctionId(func, selector, text),
+  VulnerableSelfdestructFunction(func).
+
+.output VulnerableSelfdestructFunctionWithSelector
+
+
+.decl VulnerableDelegateCallFunctionWithSelector(func: Function, selector: symbol, text: symbol)
+VulnerableDelegateCallFunctionWithSelector(func, selector, text) :-
+  PublicFunctionId(func, selector, text),
+  IsPublicFunction(func),
+  Statement_Function(stmt, func),
+  MY_DELEGATECALL(stmt, _, target, _, _, _, _, _).
+  // (MY_CALLER(_, target); MY_ORIGIN(_, target)),
+  // UnguardedPublicFunction(func).
+
+.output VulnerableDelegateCallFunctionWithSelector
+
+.decl MY_DELEGATECALL(
+  stmt:Statement, 
+  gas:Variable, 
+  target:Variable, 
+  data_start:Variable,
+  data_length:Variable, 
+  return_start:Variable, 
+  return_length:Variable, 
+  success: Variable
+)
+
+
+MY_DELEGATECALL(stmt, gas, target, data_start, data_length, return_start, return_length, success) :-
+  Statement_Opcode(stmt, "DELEGATECALL"),
+  Statement_Defines(stmt, success, _),
+  Statement_Uses(stmt, gas, 0),
+  Statement_Uses(stmt, target, 1),
+  Statement_Uses(stmt, data_start, 2),
+  Statement_Uses(stmt, data_length, 3),
+  Statement_Uses(stmt, return_start, 4),
+  Statement_Uses(stmt, return_length, 5).
