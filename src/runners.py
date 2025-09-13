@@ -161,12 +161,16 @@ def run_process(process_args, timeout: float, stdout=devnull, stderr=devnull, cw
 
 
 def compile_datalog(spec: str, souffle_bin: str, cache_dir: str, reuse_datalog_bin: bool, souffle_macros: str) -> None:
+    print("dsada0-1")
+    print("cache_dir: "+ cache_dir)
     pathlib.Path(cache_dir).mkdir(exist_ok=True)
+    print("dsada0-2")
     executable_path = get_souffle_executable_path(cache_dir, spec)
+    print("dsada0")
 
     if reuse_datalog_bin and os.path.isfile(executable_path):
         return
-
+    print("dsada")
     cpp_macros = []
     for macro_def in souffle_macros.split(' '):
         cpp_macros.append('-D')

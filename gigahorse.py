@@ -542,6 +542,7 @@ def run_gigahorse(args, fact_generator: AbstractFactGenerator) -> None:
 
         running_processes = []
         for file in souffle_files:
+            print("start compiler.")
             proc = Process(target = compile_datalog, args=(file, args.souffle_bin, args.cache_dir, args.reuse_datalog_bin, get_souffle_macros()))
             proc.start()
             running_processes.append(proc)
@@ -609,10 +610,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    print("0:")
     tac_gen_config_json = args.tac_gen_config
+    print("args: "+ str(args))
     with open(tac_gen_config_json, 'r') as config:
         tac_gen_config = json.loads(config.read())
+        print("len:" + str(len(tac_gen_config["handlers"])) )
         if len(tac_gen_config["handlers"]) == 0: #if no handlers defined, default to classic decompilation
+            print("1:")
             run_gigahorse(args, DecompilerFactGenerator(args, ".*.hex"))
         elif len(tac_gen_config["handlers"]) == 1: # if one handler defined, can be either classic decompilation, or custom script
             tac_gen = tac_gen_config["handlers"][0]
