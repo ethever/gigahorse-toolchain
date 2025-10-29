@@ -24,8 +24,8 @@ PreTransStatement_OriginalStatement(ogStmt, ogStmt) :-
   factReader.Statement_Opcode(ogStmt, _).
 
 PreTransStatement_OriginalStatement(rvtClStmt, ogStmt) :-
-  revertCloner.StatementToClonedStatement(_, ogStmt, rvtClStmt).
-
+  PreTransStatement_OriginalStatement(stmt, ogStmt),
+  revertCloner.StatementToClonedStatement(_, stmt, rvtClStmt).
 
 .init revertCloner = RevertBlockCloner
 COPY_CODE(revertCloner, factReader)
@@ -69,6 +69,20 @@ clonerHelperInsertor.insertOps(fallthrough,
   beforeClonerLocal.FallthroughBlockUsedMultipleTimes(_, fallthrough),
   beforeClonerLocal.JUMPDEST(fallthrough).
 
+// If a shared public function start is a fallthrough block, make it a direct jump
+clonerHelperInsertor.insertOps(insertPoint,
+  LIST(
+    STMT(PUSH4, MAKE_LABEL_REFERENCE(functionStart)),
+    STMT(JUMP, ""),
+    STMT(JUMPDEST, MAKE_LABEL_REFERENCE(functionStart))
+  )
+) :-
+  beforeClonerLocal.PublicFunctionStartShared(_, functionStart),
+  beforeClonerLocal.Statement_Next(as(functionStart, Statement), insertPoint),
+  beforeClonerLocal.Statement_Block(jumpi, functionStart),
+  beforeClonerLocal.Statement_Opcode(jumpi, "JUMPI").
+
+
 COPY_OUTPUT(blockCloner, clonerHelperInsertor)
 // Transformation doesn't introduce new blocks, we can use revertCloner for the original block info
 blockCloner.Prev_Block_OriginalBlock(block, originalBlock):- revertCloner.Block_OriginalBlock(block, originalBlock).
@@ -76,13 +90,13 @@ blockCloner.Prev_Block_OriginalBlock(block, originalBlock):- revertCloner.Block_
 .init preTrans = PreTransLocalAnalysis
 COPY_OUTPUT(preTrans, blockCloner)
 
-PreTransStatement_OriginalStatement(heurClStmt, ogStmt) :-
-  blockCloner.StatementToClonedStatement(_, rvtClStmt, heurClStmt),
-  revertCloner.StatementToClonedStatement(_, ogStmt, rvtClStmt).
+PreTransStatement_OriginalStatement(insStmt, ogStmt) :-
+  PreTransStatement_OriginalStatement(ogOrMidStmt, ogStmt),
+  clonerHelperInsertor.InsertedOpNewStatement(ogOrMidStmt, _, insStmt).
 
 PreTransStatement_OriginalStatement(heurClStmt, ogStmt) :-
-  blockCloner.StatementToClonedStatement(_, ogStmt, heurClStmt),
-  !revertCloner.StatementToClonedStatement(_, _, ogStmt).
+  PreTransStatement_OriginalStatement(ogOrMidStmt, ogStmt),
+  blockCloner.StatementToClonedStatement(_, ogOrMidStmt, heurClStmt).
 
 ValidSelector(optionalSelector):-
   blockCloner.analysis.ValidSelector(optionalSelector).
@@ -256,6 +270,7 @@ insertor.insertOps(mload,
 ) :-
   preTrans.CODECOPYSmallConstWLoad(codeCopy, const, mload).
 
+// Replace codecopy with MSTORE of constant value
 insertor.removeOp(codeCopy),
 insertor.insertOps(codeCopy,
   LIST(
@@ -263,7 +278,8 @@ insertor.insertOps(codeCopy,
     STMT(POP, ""),
     STMT(POP, ""),
     STMT(PUSH32, const),
-    STMT(SWAP1, "")
+    STMT(SWAP1, ""),
+    STMT(MSTORE, "")
   )
 ) :-
   preTrans.CODECOPYSmallConstNoLoad(codeCopy, const).

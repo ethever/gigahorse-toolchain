@@ -57,6 +57,9 @@ results.json
 # testing files
 .tests/**
 
+# default temp folder
+.temp*/
+
 # sqlite databases
 *.sqlite
 

@@ -655,6 +655,14 @@ IsStackIndexLessThan(n, maximum) :- n = range(0, maximum, 1).
     BasicBlock_Head(next, fallthrough),
     block1 != block2.
 
+  // Stack balance block is fallthrough and also used elsewhere. Make it a jump so it can be cloned.
+  FallthroughBlockUsedMultipleTimes(block, fallthrough):-
+    JumplessFalthroughBlock(block, next),
+    StackBalanceBlock(next),
+    (BlockPushesLabel(otherBlock, as(next, Value)); StaticBlockJumpTarget(otherBlock, as(next, Value))),
+    BasicBlock_Head(next, fallthrough),
+    block != otherBlock.
+
   .decl CODECOPYStatement(stmt: Statement, offset: Value, size: Value)
   CODECOPYStatement(codeCopy, codeOffsetNumHex, smallNumHex) :-
     Statement_Opcode(codeCopy, "CODECOPY"),
@@ -722,6 +730,19 @@ IsStackIndexLessThan(n, maximum) :- n = range(0, maximum, 1).
     Statement_Next(dupStmt, mload),
     Statement_Opcode(mload, "MLOAD"),
     BeforeLocalStackContents(mload, 0, memLocVar).
+
+  // handle constant writes, mostly in optimized code.
+  CODECOPYSmallConstWLoad(codeCopy, const, mload):-
+    CODECOPYSmallConst(codeCopy, const),
+    BeforeLocalStackContents(codeCopy, 0, memLocVar1),
+    CheckIsVariable(memLocVar1),
+    Variable_Value(memLocVar1, val),
+    Statement_Next(codeCopy, someStmt),
+    Statement_Next(someStmt, mload),
+    Statement_Opcode(mload, "MLOAD"),
+    BeforeLocalStackContents(mload, 0, memLocVar2),
+    CheckIsVariable(memLocVar2),
+    Variable_Value(memLocVar2, val).
 
   CODECOPYSmallConstNoLoad(codeCopy, const):-
     CODECOPYSmallConst(codeCopy, const),
@@ -942,6 +963,16 @@ IsStackIndexLessThan(n, maximum) :- n = range(0, maximum, 1).
     BlockComparesCallDataSizeToFour(_, _, block),
     BlockJumpsOnCallDataSize(block, jumpi, noCallDataSizeBranch, callDataSizeBranch).
 
+  .decl PublicFunctionStartShared(sigHash: symbol, functionStartBlock: Block)
+  PublicFunctionStartShared(sigHash1, as(functionStart, Block)):-
+    BlockComparesSig(block1, sigHash1, _),
+    ImmediateBlockJumpTarget(block1, var1),
+    Variable_Value(var1, functionStart),
+    Variable_Value(var2, functionStart),
+    ImmediateBlockJumpTarget(block2, var2),
+    BlockComparesSig(block2, sigHash2, _),
+    JUMPDEST(as(functionStart, Statement)),
+    sigHash1 != sigHash2.
 }
 
 /**
